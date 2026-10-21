@@ -38,6 +38,17 @@ const getThreadMessages = asyncHandler(async (req, res) => {
   res.json({ messages });
 });
 
+const clearThreadMessages = asyncHandler(async (req, res) => {
+  await getOwnedWorkspace(req.params.workspaceId, req.user.id);
+  const thread = await getOwnedThread(req.params.threadId, req.user.id, req.params.workspaceId);
+  await repository.deleteWhere('chatMessages', {
+    userId: req.user.id,
+    workspaceId: req.params.workspaceId,
+    threadId: thread.id
+  });
+  res.json({ success: true });
+});
+
 const askWorkspaceQuestion = asyncHandler(async (req, res) => {
   const question = typeof req.body.question === 'string' ? req.body.question.trim() : '';
   if (!question) throw httpError(400, 'Enter a question before sending');
@@ -85,5 +96,6 @@ const askWorkspaceQuestion = asyncHandler(async (req, res) => {
 module.exports = {
   getWorkspaceChatInfo,
   getThreadMessages,
+  clearThreadMessages,
   askWorkspaceQuestion
 };
