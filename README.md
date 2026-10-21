@@ -253,3 +253,19 @@ Contributions and improvements are welcome. For local development, create a feat
 ---
 
 **NexusFlow AI** — Bringing workspaces, documents, AI-assisted conversations, and automated workflows together in one application.
+
+
+
+## Copyright and Usage
+
+Copyright © 2026 Keerthi Chandana. All rights reserved.
+
+NexusFlow AI is a personal project. Unless otherwise stated, the source code and original project materials are protected by copyright.
+
+You are welcome to explore the repository, report issues, suggest improvements, and propose contributions through pull requests.
+
+However, copying, redistributing, republishing, or using this project's source code or substantial portions of it in another project requires prior written permission from the copyright holder, except where permitted by applicable law.
+
+Please do not present this project or its original work as your own.
+
+For collaboration or permission to reuse the code, please contact the repository owner.
