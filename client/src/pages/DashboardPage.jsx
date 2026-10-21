@@ -83,16 +83,6 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
-      <div className="panel rounded-xl p-4">
-        <div className="mb-3 text-sm font-semibold text-slate-900">File Type Breakdown</div>
-        <div className="flex flex-wrap gap-2">
-          {dashboard?.fileTypeBreakdown ? Object.entries(dashboard.fileTypeBreakdown).map(([type, count]) => (
-            <span key={type} className="rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-700">
-              {type}: {count}
-            </span>
-          )) : <div className="text-sm text-slate-500">No files yet.</div>}
-        </div>
-      </div>
     </div>
   );
 }
