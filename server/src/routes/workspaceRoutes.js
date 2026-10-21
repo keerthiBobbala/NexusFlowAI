@@ -32,6 +32,7 @@ router.post('/:workspaceId/documents/upload', upload.single('file'), documentCon
 
 router.get('/:workspaceId/chat', chatController.getWorkspaceChatInfo);
 router.get('/:workspaceId/chat/:threadId/messages', chatController.getThreadMessages);
+router.delete('/:workspaceId/chat/:threadId/messages', chatController.clearThreadMessages);
 router.post('/:workspaceId/chat', chatController.askWorkspaceQuestion);
 
 router.get('/:workspaceId/runs', runController.listWorkspaceRuns);
