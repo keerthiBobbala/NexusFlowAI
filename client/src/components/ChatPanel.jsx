@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Bot, FileText, MessageCircle, Send, Sparkles, UserRound } from 'lucide-react';
+import { Bot, FileText, MessageCircle, MessageSquarePlus, Send, Sparkles, Trash2, UserRound } from 'lucide-react';
 import { chatApi } from '../api';
 import { queryKeys } from '../utils/queryKeys';
 import Button from './Button';
@@ -63,6 +63,7 @@ function formatLegacyMilestoneAnswer(message, previousMessage) {
 export default function ChatPanel({ workspaceId }) {
   const queryClient = useQueryClient();
   const [threadId, setThreadId] = useState('');
+  const [isNewChat, setIsNewChat] = useState(false);
   const [question, setQuestion] = useState('');
   const bottomRef = useRef(null);
 
@@ -73,10 +74,10 @@ export default function ChatPanel({ workspaceId }) {
   });
 
   useEffect(() => {
-    if (!threadId && threadsQuery.data?.threads?.length) {
+    if (!threadId && !isNewChat && threadsQuery.data?.threads?.length) {
       setThreadId(threadsQuery.data.threads[0].id);
     }
-  }, [threadsQuery.data, threadId]);
+  }, [threadsQuery.data, threadId, isNewChat]);
 
   const messagesQuery = useQuery({
     queryKey: queryKeys.workspaceChatMessages(workspaceId, threadId),
@@ -89,6 +90,7 @@ export default function ChatPanel({ workspaceId }) {
     onSuccess: async (data) => {
       setQuestion('');
       setThreadId(data.thread.id);
+      setIsNewChat(false);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.workspaceChat(workspaceId) }),
         queryClient.invalidateQueries({ queryKey: queryKeys.workspaceChatMessages(workspaceId, data.thread.id) }),
@@ -99,9 +101,18 @@ export default function ChatPanel({ workspaceId }) {
     }
   });
 
+  const clearMutation = useMutation({
+    mutationFn: (activeThreadId) => chatApi.clearMessages(workspaceId, activeThreadId),
+    onSuccess: async (_data, activeThreadId) => {
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.workspaceChatMessages(workspaceId, activeThreadId)
+      });
+    }
+  });
+
   const messages = messagesQuery.data?.messages || [];
   const threads = threadsQuery.data?.threads || [];
-  const activeThread = threads.find((thread) => thread.id === threadId) || threads[0] || null;
+  const activeThread = isNewChat ? null : threads.find((thread) => thread.id === threadId) || threads[0] || null;
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
@@ -128,8 +139,9 @@ export default function ChatPanel({ workspaceId }) {
           threadsQuery.error?.response?.data?.message ||
           messagesQuery.error?.response?.data?.message ||
           sendMutation.error?.response?.data?.message ||
-          ([threadsQuery, messagesQuery, sendMutation].some((query) => query.isError)
-            ? 'Chat could not be loaded or sent. Please try again.'
+          clearMutation.error?.response?.data?.message ||
+          ([threadsQuery, messagesQuery, sendMutation, clearMutation].some((query) => query.isError)
+            ? 'Chat could not be loaded, updated, or sent. Please try again.'
             : null)
         }
       />
@@ -137,26 +149,64 @@ export default function ChatPanel({ workspaceId }) {
       {!threadsQuery.isLoading ? (
         <div className="space-y-4 p-4 sm:p-5">
           <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 pb-3">
-            {threads.length ? (
-              threads.map((thread) => (
-                <button
-                  key={thread.id}
-                  type="button"
-                  onClick={() => setThreadId(thread.id)}
-                  className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
-                    thread.id === (activeThread?.id || threadId)
-                      ? 'border-indigo-600 bg-indigo-600 text-white shadow-sm'
-                      : 'border-slate-200 bg-white text-slate-700 hover:border-indigo-200 hover:bg-indigo-50'
-                  }`}
-                >
-                  {thread.title || 'Workspace Chat'}
-                </button>
-              ))
-            ) : (
-              <div className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-600">
-                No thread yet
-              </div>
-            )}
+            <div className="mr-auto flex flex-wrap items-center gap-2">
+              {threads.length ? (
+                threads.map((thread) => (
+                  <button
+                    key={thread.id}
+                    type="button"
+                    onClick={() => {
+                      setIsNewChat(false);
+                      setThreadId(thread.id);
+                    }}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                      !isNewChat && thread.id === (activeThread?.id || threadId)
+                        ? 'border-indigo-600 bg-indigo-600 text-white shadow-sm'
+                        : 'border-slate-200 bg-white text-slate-700 hover:border-indigo-200 hover:bg-indigo-50'
+                    }`}
+                  >
+                    {thread.title || 'Workspace Chat'}
+                  </button>
+                ))
+              ) : (
+                <div className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-600">
+                  No thread yet
+                </div>
+              )}
+              {isNewChat ? (
+                <span className="rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700">
+                  New conversation
+                </span>
+              ) : null}
+            </div>
+            <div className="ml-auto flex items-center gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                className="rounded-full px-3 py-1.5 text-xs"
+                onClick={() => {
+                  setQuestion('');
+                  setThreadId('');
+                  setIsNewChat(true);
+                }}
+                disabled={sendMutation.isPending || clearMutation.isPending}
+                title="Start a new conversation"
+              >
+                <MessageSquarePlus size={14} />
+                New chat
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                className="rounded-full px-3 py-1.5 text-xs text-rose-700 hover:bg-rose-50 hover:text-rose-800"
+                onClick={() => clearMutation.mutate(activeThread.id)}
+                disabled={!activeThread || !messages.length || sendMutation.isPending || clearMutation.isPending}
+                title="Clear messages in this conversation"
+              >
+                <Trash2 size={14} />
+                {clearMutation.isPending ? 'Clearing…' : 'Clear chat'}
+              </Button>
+            </div>
           </div>
 
           <div className="chat-transcript max-h-[32rem] min-h-64 space-y-5 overflow-y-auto rounded-2xl border border-slate-200 bg-gradient-to-b from-slate-50 to-indigo-50/40 p-4 sm:p-5">
